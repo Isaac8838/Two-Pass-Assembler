@@ -12,8 +12,10 @@ string OPCODE;
 string OPERAND;
 string startingAddress;
 string programLength;
+string H, T, E;
 vector<string> line;
 vector<string> opcode;
+vector<string> tRecord;
 stringstream ss;
 
 void InitOpcode() {
@@ -22,6 +24,24 @@ void InitOpcode() {
         opcode.push_back(c);
     }
     in.close();
+}
+
+string BitExtension(string h) {
+    string zero;
+    int left = 0;
+    if (h.size() < 6) left = 6 - h.size();
+    while (left--)  {
+        zero += '0';
+    }
+    zero += h;
+    return zero;
+}
+
+
+void InitText() {
+    T.clear();
+    line[0] = BitExtension(line[0]);
+    T = "T^" + line[0] + '^';
 }
 
 void BuildOPTAB() {
@@ -56,6 +76,7 @@ string GetOPCODE() {
 }
 
 bool IsComment() {
+    if (line.empty()) return false;
     if (line[0][0] == '.') return true;
     else return false;
 }
@@ -102,16 +123,128 @@ int GetByteOperandVal() {
     return 0;
 }
 
+void ByteObjCode() {
+    OPERAND = line.back();
+    char type = OPERAND[0];
+    string temp;
+    
+    if (type == 'C') {
+        temp.clear();
+        string TR;
+        TR.clear();
+        for (int i = 1; i < OPERAND.size(); i++) {
+            if (OPERAND[i] == '\'') continue;
+            else {
+                int ASCII = OPERAND[i];
+                ss.clear();
+                ss << hex << ASCII;
+                ss >> temp;
+                TR += temp;
+            }
+        }
+        tRecord.push_back(TR);
+    }
+    else if (type == 'X') {
+        temp.clear();
+        for (int i = 1; i < OPERAND.size(); i++) {
+            if (OPERAND[i] == '\'') continue;
+            else {
+                temp += OPERAND[i];
+            }
+        }
+        if (tRecord.empty()) InitText();
+        tRecord.push_back(temp);
+    }
+}
+
+void WordObjCode() {
+    int val = GetOperandValue();
+    string s;
+    ss.clear();
+    ss << hex << val;
+    ss >> s;
+    s = BitExtension(s);
+    if (tRecord.empty()) InitText();
+    tRecord.push_back(s);
+}
+
 void GetProgramLength() {
     ss.clear();
+    string s;
     int LCTCTR, starAdd;
+    int result;
     ss << hex << LOCCTR;
     ss >> LCTCTR;
     ss.clear();
     ss << hex << startingAddress;
     ss >> starAdd;
+    ss.clear();
     ss << hex << (LCTCTR - starAdd);
     ss >> programLength;
+}
+
+string BinToHex(string x) {
+    string h;
+    int base = 1;
+    int sum = 0;
+    for (int i = x.size() - 1; i >= 0; i--) {
+        sum += (x[i] - '0') * base;
+        base *= 2;
+    }
+    h.clear();
+    if (sum >= 10) {
+        h = (sum - 10) + 'A';
+    }
+    else {
+        h = sum + '0';
+    }
+    return h;
+}
+
+void ObjCodeCal() {
+    OPERAND = line.back();
+    int n = OPERAND.size();
+    string x;
+    x.clear();
+    if (OPERAND[n - 2] == ',' && OPERAND[n - 1] == 'X') {
+        x = "1";
+        OPERAND.resize(n - 2);
+    }
+    else x = "0";
+    string Add = SYMTAB[OPERAND];
+    bitset<3> b(Add[0]);
+    x += b.to_string();
+    x = BinToHex(x);
+    string temp;
+    temp = OPTAB[OPCODE] + x + Add[1] + Add[2] + Add[3];
+    if (tRecord.empty()) InitText();
+    tRecord.push_back(temp);
+}
+
+void WriteTextRecord() {
+    int bytecnt = 0;
+    string temp;
+    for (auto i : tRecord) {
+        if (i.size() < 6) {
+            bytecnt++;
+        }
+    }
+    int length = (3 * (tRecord.size() - bytecnt)) + bytecnt;
+    ss.clear();
+    ss << hex << length;
+    temp.clear();
+    ss >> temp;
+
+    if (temp.size() < 2) {
+        temp = '0' + temp;
+    }
+
+    T += temp;
+    for (auto i : tRecord) {
+        T += '^' + i;
+    }
+    out << T << '\n';
+    tRecord.clear();
 }
 
 void Pass1() {
@@ -122,7 +255,9 @@ void Pass1() {
     in.getline(c, 100);
     GetNewLine(c);
     OPCODE = GetOPCODE();
+    
     if (OPCODE == "START") {
+        LABLE = line[0];
         OPERAND = line.back();
         LOCCTR = line.back();
         startingAddress = LOCCTR;
@@ -182,9 +317,75 @@ void Pass1() {
     out.close();
 }
 
+void Pass2() {
+    in.open("intermediateFile.txt", ios::in);
+    out.open("objectProgram.obj", ios::out);
+
+    // START
+    in.getline(c, 100);
+    GetNewLine(c);
+    OPCODE = GetOPCODE();
+    if (OPCODE == "START") {
+        LABLE = line[1];
+        startingAddress = line[3];
+        in.getline(c, 100);
+        GetNewLine(c);
+        OPCODE = GetOPCODE();
+    }
+    startingAddress = BitExtension(startingAddress);
+    H.clear();
+    H = "H^" + LABLE + "  " + '^' + startingAddress + '^' + programLength;
+    out << H << '\n';
+    InitText();
+
+    while (OPCODE != "END") {
+        string test = OPCODE;
+        if (!IsComment()) {
+            if (OPCODE == "BYTE" || OPCODE == "WORD") {
+                if (OPCODE == "BYTE") {
+                    ByteObjCode();
+                }
+                else {
+                    WordObjCode();
+                }
+            }
+            else if (OPCODE == "RESW" || OPCODE == "RESB"){
+                if (!tRecord.empty()) {
+                    WriteTextRecord();
+                }
+            }
+            else {
+                if (line.size() > 2) {
+                    ObjCodeCal();
+                }
+                else {
+                    string op = OPTAB[OPCODE];
+                    string Add = "0000";
+                    op += Add;
+                    tRecord.push_back(op);
+                }
+            }
+            if (tRecord.size() == 10) {
+                WriteTextRecord();
+            }
+        }
+        in.getline(c, 100);
+        GetNewLine(c);
+        OPCODE = GetOPCODE();
+    }
+    WriteTextRecord();
+    E.clear();
+    E = "E^" + startingAddress;
+    out << E << '\n';
+
+    in.close();
+    out.close();
+}
+
 int main() {
     BuildOPTAB();
     InitOpcode();
     Pass1();
+    Pass2();
     return 0;
 }
