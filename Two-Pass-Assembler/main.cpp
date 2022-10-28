@@ -158,11 +158,19 @@ void Pass1() {
                 SetLOCCTR(val);
             }
             else {
-                OPERAND = line.back();
+                if (line.size() > 1) {
+                    OPERAND = line.back();
+                }
+                else {
+                    OPERAND = '\t';
+                }
                 SetLOCCTR(3);
             }
+            out << LABLE << '\t' << OPCODE << '\t' << OPERAND << '\n';
         }
-        out << LABLE << '\t' << OPCODE << '\t' << OPERAND << '\n';
+        else {
+            out << line[0] << '\n';
+        }
         in.getline(c, 100);
         GetNewLine(c);
         OPCODE = GetOPCODE();
