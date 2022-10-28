@@ -243,6 +243,7 @@ void WriteTextRecord() {
     for (auto i : tRecord) {
         T += '^' + i;
     }
+    transform(T.begin(), T.end(), T.begin(), ::toupper);
     out << T << '\n';
     tRecord.clear();
 }
@@ -334,7 +335,9 @@ void Pass2() {
     }
     startingAddress = BitExtension(startingAddress);
     H.clear();
+    programLength = BitExtension(programLength);
     H = "H^" + LABLE + "  " + '^' + startingAddress + '^' + programLength;
+    transform(H.begin(), H.end(), H.begin(), ::toupper);
     out << H << '\n';
     InitText();
 
@@ -376,6 +379,7 @@ void Pass2() {
     WriteTextRecord();
     E.clear();
     E = "E^" + startingAddress;
+    transform(E.begin(), E.end(), E.begin(), ::toupper);
     out << E << '\n';
 
     in.close();
