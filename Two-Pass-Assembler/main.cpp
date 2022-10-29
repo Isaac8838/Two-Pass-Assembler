@@ -376,7 +376,8 @@ void Pass2() {
         GetNewLine(c);
         OPCODE = GetOPCODE();
     }
-    WriteTextRecord();
+    if (!tRecord.empty())
+        WriteTextRecord();
     E.clear();
     E = "E^" + startingAddress;
     transform(E.begin(), E.end(), E.begin(), ::toupper);
