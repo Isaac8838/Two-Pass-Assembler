@@ -13,6 +13,7 @@ string OPERAND;
 string startingAddress;
 string programLength;
 string H, T, E;
+string fileName;
 vector<string> line;
 vector<string> opcode;
 vector<string> tRecord;
@@ -249,7 +250,8 @@ void WriteTextRecord() {
 }
 
 void Pass1() {
-    in.open("sourceProgram.txt", ios::in);
+    cin >> fileName;
+    in.open(fileName, ios::in);
     out.open("intermediateFile.txt", ios::out);
 
     // START
@@ -320,7 +322,7 @@ void Pass1() {
 
 void Pass2() {
     in.open("intermediateFile.txt", ios::in);
-    out.open("objectProgram.obj", ios::out);
+    out.open(fileName + ".obj", ios::out);
 
     // START
     in.getline(c, 100);
