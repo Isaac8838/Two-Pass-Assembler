@@ -322,6 +322,7 @@ void Pass1() {
 
 void Pass2() {
     in.open("intermediateFile.txt", ios::in);
+    fileName.resize(fileName.size() - 4);
     out.open(fileName + ".obj", ios::out);
 
     // START
